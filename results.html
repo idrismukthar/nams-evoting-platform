@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NAMS | Live Results</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+      body {
+        background: #f5f7fb;
+        font-family: "Poppins", sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+      }
+
+      header {
+        text-align: center;
+        margin: 2rem 0 1rem;
+      }
+
+      header h1 {
+        font-size: 1.8rem;
+        color: #1a1a1a;
+      }
+
+      header p {
+        color: #555;
+      }
+
+      .results-container {
+        width: 90%;
+        max-width: 900px;
+        background: #fff;
+        border-radius: 16px;
+        padding: 1.5rem 2rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        margin-bottom: 2rem;
+      }
+
+      .position-block {
+        margin-bottom: 2.5rem;
+      }
+
+      .position-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: #0055a5;
+        border-bottom: 2px solid #eee;
+        padding-bottom: 0.4rem;
+        margin-bottom: 1rem;
+      }
+
+      .candidate {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.8rem 1rem;
+        border-radius: 10px;
+        background: #fafafa;
+        margin-bottom: 0.8rem;
+        transition: background 0.2s;
+      }
+
+      .candidate:hover {
+        background: #f1f5ff;
+      }
+
+      .candidate-info {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+      }
+
+      .candidate img {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        object-fit: cover;
+      }
+
+      .candidate-name {
+        font-weight: 500;
+        color: #222;
+      }
+
+      .vote-count {
+        font-weight: 600;
+        color: #0055a5;
+      }
+
+      /* Bar chart style */
+      .bar-container {
+        width: 100%;
+        height: 12px;
+        background: #e9ecef;
+        border-radius: 10px;
+        margin-top: 6px;
+        overflow: hidden;
+      }
+
+      .bar {
+        height: 100%;
+        background: linear-gradient(90deg, #0055a5, #00b4d8);
+        border-radius: 10px;
+        width: 0%;
+        transition: width 0.8s ease-in-out;
+      }
+
+      footer {
+        text-align: center;
+        font-size: 0.85rem;
+        color: #666;
+        margin-bottom: 1rem;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <h1>🗳️ NAMS LASU Live Election Results</h1>
+      <p>Updates automatically every 5 seconds</p>
+    </header>
+
+    <div class="results-container" id="resultsContainer">
+      <p style="text-align:center; color:#555;">Loading results...</p>
+    </div>
+
+    <footer>
+      Powered by <strong>The Claritas</strong> | NAMS LASU E-Voting
+    </footer>
+
+    <script>
+      async function fetchResults() {
+        try {
+          const res = await fetch("http://localhost:4000/results");
+          if (!res.ok) throw new Error("Network response not ok");
+          const data = await res.json();
+
+          const grouped = {};
+          data.forEach((row) => {
+            if (!grouped[row.position]) grouped[row.position] = [];
+            grouped[row.position].push(row);
+          });
+
+          const container = document.getElementById("resultsContainer");
+          container.innerHTML = "";
+
+          for (const position in grouped) {
+            const block = document.createElement("div");
+            block.className = "position-block";
+
+            const title = document.createElement("h2");
+            title.className = "position-title";
+            title.textContent = position;
+            block.appendChild(title);
+
+            const candidates = grouped[position];
+            const maxVotes = Math.max(...candidates.map((c) => c.totalVotes));
+
+            candidates.forEach((cand) => {
+              const div = document.createElement("div");
+              div.className = "candidate";
+
+              const info = document.createElement("div");
+              info.className = "candidate-info";
+
+              const img = document.createElement("img");
+              img.src = cand.image
+                ? `http://localhost:4000/uploads/${cand.image}`
+                : "images/default-avatar.png";
+
+              const name = document.createElement("span");
+              name.className = "candidate-name";
+              name.textContent = cand.name;
+
+              info.appendChild(img);
+              info.appendChild(name);
+
+              const votes = document.createElement("span");
+              votes.className = "vote-count";
+              votes.textContent = `${cand.totalVotes} votes`;
+
+              div.appendChild(info);
+              div.appendChild(votes);
+              block.appendChild(div);
+
+              // Bar chart container
+              const barContainer = document.createElement("div");
+              barContainer.className = "bar-container";
+
+              const bar = document.createElement("div");
+              bar.className = "bar";
+              const percentage = maxVotes > 0 ? (cand.totalVotes / maxVotes) * 100 : 0;
+              setTimeout(() => (bar.style.width = percentage + "%"), 200);
+
+              barContainer.appendChild(bar);
+              block.appendChild(barContainer);
+            });
+
+            container.appendChild(block);
+          }
+        } catch (err) {
+          console.error("⚠️ Failed to fetch results:", err);
+          document.getElementById("resultsContainer").innerHTML =
+            "<p style='text-align:center; color:red;'>Unable to load results. Please try again later.</p>";
+        }
+      }
+
+      fetchResults();
+      setInterval(fetchResults, 5000);
+    </script>
+  </body>
+</html>
