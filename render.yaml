@@ -2,8 +2,8 @@ services:
   - type: web
     name: nams-evoting-backend
     env: node
-    buildCommand: npm install --prefix backend
-    startCommand: npm start --prefix backend
+    buildCommand: npm install
+    startCommand: cd backend && node server.js
     autoDeploy: true
     envVars:
       - key: NODE_ENV
