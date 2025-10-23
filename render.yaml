@@ -3,13 +3,17 @@ services:
     name: nams-evoting-backend
     env: node
     buildCommand: |
-      pwd
+      # Create the exact directory structure Render expects
+      mkdir -p /opt/render/project/src/backend
+      # Copy all backend files to the expected location
+      cp -r backend/* /opt/render/project/src/backend/
+      # Move to that directory
+      cd /opt/render/project/src/backend
+      # Show what we copied (for debugging)
       ls -la
-      cd backend
-      pwd
-      ls -la
+      # Install dependencies
       npm install
-    startCommand: cd backend && node server.js
+    startCommand: cd /opt/render/project/src/backend && node server.js
     autoDeploy: true
     envVars:
       - key: NODE_ENV
