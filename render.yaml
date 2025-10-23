@@ -3,11 +3,9 @@ services:
     name: nams-evoting-backend
     env: node
     buildCommand: |
-      mkdir -p /opt/render/project/src/backend
-      cp -r backend/* /opt/render/project/src/backend/
-      cd /opt/render/project/src/backend
+      cd backend
       npm install
-    startCommand: cd /opt/render/project/src/backend && node server.js
+    startCommand: cd backend && node server.js
     autoDeploy: true
     envVars:
       - key: NODE_ENV
