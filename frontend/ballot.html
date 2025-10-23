@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NAMS | Ballot</title>
+    <link rel="stylesheet" href="css/ballot_style.css" />
+    <script src="js/config.js"></script>
+  </head>
+
+  <body>
+    <!-- Success Modal -->
+    <div id="successModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <img src="images/nams-logo.jpg" alt="NAMS Logo" class="modal-logo">
+        </div>
+        <div class="modal-body">
+          <h2>Thank You for Voting! 🎉</h2>
+          <p>Your vote has been successfully submitted and recorded.</p>
+          <p class="modal-note">Together, we're making NAMS LASU better!</p>
+          <button onclick="closeModal()" class="close-modal-btn">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ballot-container">
+      <!-- Header -->
+      <header class="ballot-header">
+        <div class="logo-group">
+          <img src="images/nams-logo.jpg" alt="NAMS Logo" class="header-logo" />
+          <img src="images/lasu-logo.png" alt="LASU Logo" class="header-logo" />
+        </div>
+
+        <h2 id="welcome-user" class="welcome-text"></h2>
+
+        <h1>NAMS LASU E-VOTING PLATFORM</h1>
+        <p>Nigerian Association of Microbiology Students (LASU Chapter)</p>
+      </header>
+
+      <!-- Content -->
+      <main class="site-content">
+        <section class="candidates-section">
+          <h2 class="section-title">Meet the Candidates & Cast Your Vote</h2>
+
+          <div class="card-grid" id="candidates-grid"></div>
+
+          <div class="submit-area">
+            <button id="submitVoteBtn" class="vote-btn">Submit Vote 🗳️</button>
+            <div id="vote-message"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+      // ==================== MODAL FUNCTIONS ====================
+      function closeModal() {
+        const modal = document.getElementById("successModal");
+        modal.classList.remove("show");
+      }
+
+      // Close modal if clicking outside
+      window.onclick = function(event) {
+        const modal = document.getElementById("successModal");
+        if (event.target === modal) {
+          closeModal();
+        }
+      }
+
+      // ==================== DISPLAY WELCOME MESSAGE ====================
+document.addEventListener("DOMContentLoaded", () => {
+  const fullname = localStorage.getItem("fullname");
+  const matric = localStorage.getItem("matric");
+  const welcomeEl = document.getElementById("welcome-user");
+
+  if (fullname && matric) {
+    welcomeEl.textContent = `Welcome, ${fullname}! 👋`;
+    welcomeEl.style.opacity = "1";
+  } else {
+    // Redirect to login if not logged in
+    window.location.href = "login.html";
+  }
+});
+
+      // ==================== LOAD CANDIDATES ====================
+      async function loadCandidates() {
+        try {
+          const res = await fetch(window.SERVER_CONFIG.url + "/candidates");
+          const candidates = await res.json();
+
+          const grid = document.getElementById("candidates-grid");
+          grid.innerHTML = "";
+
+          if (candidates.length === 0) {
+            grid.innerHTML = "<p>No candidates available yet.</p>";
+            return;
+          }
+
+          // Group by position
+          const grouped = {};
+          candidates.forEach((c) => {
+            if (!grouped[c.position]) grouped[c.position] = [];
+            grouped[c.position].push(c);
+          });
+
+          for (const position in grouped) {
+            const section = document.createElement("div");
+            section.className = "position-section";
+            section.innerHTML = `<h3>${position.toUpperCase()}</h3>`;
+
+            grouped[position].forEach((c) => {
+              const card = document.createElement("div");
+              card.className = "candidate-card";
+              card.innerHTML = `
+                <img src="${window.SERVER_CONFIG.url}/uploads/${c.image}" alt="${c.name}" class="candidate-img">
+                <p class="candidate-name">${c.name}</p>
+                <label class="vote-label">
+                  <input type="radio" name="${position}" value="${c.id}" />
+                  <span>Vote</span>
+                </label>
+              `;
+              section.appendChild(card);
+            });
+
+            grid.appendChild(section);
+          }
+        } catch (err) {
+          console.error("Error loading candidates:", err);
+          document.getElementById("candidates-grid").innerHTML =
+            "<p>❌ Failed to connect to server.</p>";
+        }
+      }
+
+      // ==================== SUBMIT VOTE ====================
+      document
+        .getElementById("submitVoteBtn")
+        .addEventListener("click", async () => {
+          const msg = document.getElementById("vote-message");
+          msg.textContent = "";
+          msg.style.color = "";
+
+          const matric = localStorage.getItem("matric");
+          if (!matric) {
+            msg.textContent = "⚠️ Please log in first to cast your vote.";
+            msg.style.color = "red";
+            return;
+          }
+
+          // Collect selected votes
+          const radios = document.querySelectorAll('input[type="radio"]:checked');
+          if (radios.length === 0) {
+            msg.textContent = "⚠️ Please select at least one candidate.";
+            msg.style.color = "red";
+            return;
+          }
+
+          // Convert to backend format (array of {candidate_id, position})
+          const votes = Array.from(radios).map(r => ({
+            candidate_id: parseInt(r.value),
+            position: r.name
+          }));
+
+          try {
+            const res = await fetch(window.SERVER_CONFIG.url + "/submitVote", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ matric, votes }),
+            });
+
+            const data = await res.json();
+            console.log("Vote Response:", data);
+
+            msg.textContent = data.message || data.error;
+            msg.style.color = res.ok ? "green" : "red";
+            msg.style.opacity = 1;
+
+            if (res.ok) {
+              // Update button state
+              document.getElementById("submitVoteBtn").disabled = true;
+              document.getElementById("submitVoteBtn").textContent = "Vote Submitted ✅";
+              
+              // Show success modal
+              const modal = document.getElementById("successModal");
+              modal.classList.add("show");
+              
+              // Update modal text to make it clear how to close
+              const modalNote = document.querySelector(".modal-note");
+              modalNote.innerHTML = "Your vote has been recorded. Click the button below or anywhere outside this message to close. 🙏";
+            }
+          } catch (err) {
+            console.error("Vote error:", err);
+            msg.textContent = "❌ Failed to connect to server.";
+            msg.style.color = "red";
+          }
+        });
+
+      // ==================== INITIAL LOAD ====================
+      loadCandidates();
+    </script>
+  </body>
+</html>
